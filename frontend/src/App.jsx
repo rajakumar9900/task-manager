@@ -1,131 +1,111 @@
-import { useState, useEffect } from 'react'
-import TaskForm from './components/TaskForm'
-import TaskList from './components/TaskList'
-import './App.css'
-
-const API_URL = 'http://localhost:5000/tasks'
+import { useState } from 'react';
+import TaskForm from './components/TaskForm';
+import TaskList from './components/TaskList';
+import LoadingSpinner from './components/LoadingSpinner';
+import ToastContainer from './components/ToastContainer';
+import ErrorBoundary from './components/ErrorBoundary';
+import { useTasks } from './hooks/useTasks';
+import { useToast } from './hooks/useToast';
+import { TOAST_TYPES, MESSAGES } from './constants';
+import './App.css';
 
 function App() {
-  const [tasks, setTasks] = useState([])
-  const [editingTask, setEditingTask] = useState(null)
-  const [error, setError] = useState('')
+  const [editingTask, setEditingTask] = useState(null);
+  const { tasks, loading, error, addTask, updateTask, deleteTask, toggleComplete } = useTasks();
+  const { toasts, addToast, removeToast } = useToast();
 
-  // Fetch all tasks
-  const fetchTasks = async () => {
-    try {
-      const response = await fetch(API_URL)
-      const data = await response.json()
-      setTasks(data)
-      setError('')
-    } catch (err) {
-      setError('Failed to fetch tasks. Make sure the server is running.')
+  const handleAddTask = async (title) => {
+    const result = await addTask(title);
+    if (result.success) {
+      addToast(MESSAGES.ADD_SUCCESS, TOAST_TYPES.SUCCESS);
+    } else {
+      addToast(result.error || MESSAGES.ADD_ERROR, TOAST_TYPES.ERROR);
     }
+  };
+
+  const handleUpdateTask = async (title) => {
+    const result = await updateTask(editingTask.id, { title });
+    if (result.success) {
+      addToast(MESSAGES.UPDATE_SUCCESS, TOAST_TYPES.SUCCESS);
+      setEditingTask(null);
+    } else {
+      addToast(result.error || MESSAGES.UPDATE_ERROR, TOAST_TYPES.ERROR);
+    }
+  };
+
+  const handleDeleteTask = async (id) => {
+    const result = await deleteTask(id);
+    if (result.success) {
+      addToast(MESSAGES.DELETE_SUCCESS, TOAST_TYPES.SUCCESS);
+    } else {
+      addToast(result.error || MESSAGES.DELETE_ERROR, TOAST_TYPES.ERROR);
+    }
+  };
+
+  const handleToggleComplete = async (id, completed) => {
+    const result = await toggleComplete(id, completed);
+    if (!result.success) {
+      addToast(result.error || MESSAGES.UPDATE_ERROR, TOAST_TYPES.ERROR);
+    }
+  };
+
+  const handleEdit = (task) => {
+    setEditingTask(task);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  if (loading) {
+    return <LoadingSpinner />;
   }
 
-  useEffect(() => {
-    fetchTasks()
-  }, [])
-
-  // Add a new task
-  const addTask = async (title) => {
-    try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title })
-      })
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.message)
-      }
-      await fetchTasks()
-      setError('')
-    } catch (err) {
-      setError(err.message || 'Failed to add task')
-    }
-  }
-
-  // Update a task
-  const updateTask = async (id, title) => {
-    try {
-      const response = await fetch(`${API_URL}/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title })
-      })
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.message)
-      }
-      await fetchTasks()
-      setEditingTask(null)
-      setError('')
-    } catch (err) {
-      setError(err.message || 'Failed to update task')
-    }
-  }
-
-  // Delete a task
-  const deleteTask = async (id) => {
-    try {
-      const response = await fetch(`${API_URL}/${id}`, {
-        method: 'DELETE'
-      })
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.message)
-      }
-      await fetchTasks()
-      setError('')
-    } catch (err) {
-      setError(err.message || 'Failed to delete task')
-    }
-  }
-
-  // Toggle task completion
-  const toggleComplete = async (id, completed) => {
-    try {
-      const response = await fetch(`${API_URL}/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ completed: !completed })
-      })
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.message)
-      }
-      await fetchTasks()
-    } catch (err) {
-      setError(err.message || 'Failed to update task')
-    }
+  if (error) {
+    return (
+      <div className="app">
+        <div className="container">
+          <div className="error-state">
+            <div className="error-icon">⚠️</div>
+            <h2>Connection Error</h2>
+            <p>{MESSAGES.FETCH_ERROR}</p>
+            <button 
+              className="btn btn-primary" 
+              onClick={() => window.location.reload()}
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="app">
-      <div className="container">
-        <header className="header">
-          <h1>✨ Task Manager</h1>
-          <p className="subtitle">Stay organized, get things done</p>
-        </header>
+    <ErrorBoundary>
+      <div className="app">
+        <div className="container">
+          <header className="header">
+            <h1>✨ Task Manager</h1>
+            <p className="subtitle">Stay organized, get things done</p>
+          </header>
 
-        {error && <div className="error-message">{error}</div>}
+          <TaskForm
+            onSubmit={editingTask ? handleUpdateTask : handleAddTask}
+            initialValue={editingTask?.title || ''}
+            isEditing={!!editingTask}
+            onCancel={() => setEditingTask(null)}
+          />
 
-        <TaskForm
-          onSubmit={editingTask ? (title) => updateTask(editingTask.id, title) : addTask}
-          initialValue={editingTask?.title || ''}
-          isEditing={!!editingTask}
-          onCancel={() => setEditingTask(null)}
-        />
+          <TaskList
+            tasks={tasks}
+            onEdit={handleEdit}
+            onDelete={handleDeleteTask}
+            onToggleComplete={handleToggleComplete}
+          />
+        </div>
 
-        <TaskList
-          tasks={tasks}
-          onEdit={setEditingTask}
-          onDelete={deleteTask}
-          onToggleComplete={toggleComplete}
-        />
+        <ToastContainer toasts={toasts} onRemove={removeToast} />
       </div>
-    </div>
-  )
+    </ErrorBoundary>
+  );
 }
 
-export default App
+export default App;

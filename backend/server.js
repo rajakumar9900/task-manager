@@ -63,6 +63,43 @@ app.delete("/tasks/:id", (req, res) => {
   });
 });
 
+// ✅ UPDATE task
+app.put("/tasks/:id", (req, res) => {
+  const { title, completed } = req.body;
+  const { id } = req.params;
+  
+  // Build dynamic update query based on provided fields
+  let updates = [];
+  let values = [];
+  
+  if (title !== undefined) {
+    updates.push("title = ?");
+    values.push(title);
+  }
+  
+  if (completed !== undefined) {
+    updates.push("completed = ?");
+    values.push(completed ? 1 : 0);
+  }
+  
+  if (updates.length === 0) {
+    return res.status(400).json({ error: "No fields to update" });
+  }
+  
+  values.push(id);
+  const query = `UPDATE tasks SET ${updates.join(", ")} WHERE id = ?`;
+  
+  db.run(query, values, function (err) {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+    res.json({ message: "Task updated", changes: this.changes });
+  });
+});
+
 // Server
 app.listen(5000, () => {
   console.log("Server running on port 5000");

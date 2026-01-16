@@ -153,6 +153,34 @@ body {
 }
 
 /* Task List Styles */
+.task-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.task-stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.stat-item strong {
+  color: var(--primary-light);
+  font-weight: 600;
+}
+
+.stat-divider {
+  color: rgba(255, 255, 255, 0.2);
+}
+
 .task-list {
   display: flex;
   flex-direction: column;
@@ -186,6 +214,11 @@ body {
   gap: 1rem;
   transition: all 0.3s ease;
   animation: slideIn 0.3s ease;
+}
+
+.task-item.deleting {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 @keyframes slideIn {
@@ -247,6 +280,8 @@ body {
   font-size: 1.1rem;
   color: var(--text);
   transition: all 0.3s ease;
+  cursor: pointer;
+  user-select: none;
 }
 
 .task-title.completed {
@@ -274,6 +309,11 @@ body {
   justify-content: center;
   border-radius: 8px;
   font-size: 1rem;
+}
+
+.btn-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-edit {
